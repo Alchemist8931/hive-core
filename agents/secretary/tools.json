@@ -1,0 +1,186 @@
+[
+  {
+    "name": "create_agent",
+    "description": "Create a new Drone agent in the Hive system. This will: 1) Insert a record into Supabase agents table, 2) Create SOUL.md and tools.json in GitHub repo, 3) Sync to OpenClaw workspace.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique agent name. Lowercase, no spaces, use hyphens. Example: 'code-reviewer'"
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "Full system prompt for the agent. Be specific about the agent's role, capabilities, constraints, and output format."
+        },
+        "model": {
+          "type": "string",
+          "enum": ["claude-sonnet-4-6", "claude-opus-4-6"],
+          "default": "claude-sonnet-4-6"
+        },
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of tool names this agent can use. Choose minimal set needed."
+        },
+        "max_iterations": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum reinforcement loop iterations before escalation"
+        },
+        "temperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      },
+      "required": ["name", "system_prompt"]
+    }
+  },
+  {
+    "name": "update_agent",
+    "description": "Modify an existing agent's configuration. Logs the change in agent_mutations with reason.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "type": "string",
+          "description": "Name of the agent to modify"
+        },
+        "field": {
+          "type": "string",
+          "enum": ["system_prompt", "model", "tools", "max_iterations", "status", "temperature"],
+          "description": "Which field to change"
+        },
+        "new_value": {
+          "type": "string",
+          "description": "New value for the field. For tools: JSON array as string. For status: active/paused/archived."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this change is needed. Be specific — this goes into the audit log."
+        }
+      },
+      "required": ["agent_name", "field", "new_value", "reason"]
+    }
+  },
+  {
+    "name": "create_task",
+    "description": "Create a new task and optionally assign it to an agent. If no agent specified, Secretary decides.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Short task title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed task description with all context needed for execution"
+        },
+        "assign_to": {
+          "type": "string",
+          "description": "Agent name to assign to. Leave empty for Secretary to decide."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "1 = highest priority, 10 = lowest"
+        },
+        "evaluation_criteria": {
+          "type": "string",
+          "description": "How to evaluate the result. Be specific about what good output looks like."
+        },
+        "max_attempts": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10
+        },
+        "pass_threshold": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Minimum score to pass evaluation"
+        },
+        "parent_task_id": {
+          "type": "string",
+          "description": "UUID of parent task if this is a sub-task"
+        }
+      },
+      "required": ["title", "description"]
+    }
+  },
+  {
+    "name": "github_commit",
+    "description": "Create or update any file in the hive-core repository, directly on the main branch.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "Path relative to repo root. Example: 'agents/coder/SOUL.md'"
+        },
+        "content": {
+          "type": "string",
+          "description": "Complete file content to write"
+        },
+        "commit_message": {
+          "type": "string",
+          "description": "Descriptive commit message. Format: '[agent-name] action description'"
+        }
+      },
+      "required": ["file_path", "content", "commit_message"]
+    }
+  },
+  {
+    "name": "list_agents",
+    "description": "List all agents in the system with their current status, model, and recent task performance.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "include_archived": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  {
+    "name": "get_task_history",
+    "description": "Get full attempt history for a task, including all scores and feedback. Useful for analyzing why a task is failing.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "UUID of the task"
+        }
+      },
+      "required": ["task_id"]
+    }
+  },
+  {
+    "name": "archive_agent",
+    "description": "Archive an agent (soft delete). Agent becomes inactive but data is preserved.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "agent_name": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the agent is being archived"
+        }
+      },
+      "required": ["agent_name", "reason"]
+    }
+  }
+]

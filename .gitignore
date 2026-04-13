@@ -1,0 +1,8 @@
+node_modules/
+ui/dist/
+.env
+.env.local
+.env.*.local
+.hive-env
+.DS_Store
+*.log
